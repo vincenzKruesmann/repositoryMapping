@@ -9,7 +9,7 @@ For instance:
 public class Person {
     public static final String TABLE_ALIAS = "p";
     
-    @EntityValue(value = "PersonId", type = Sql.Types.INT)
+    @EntityValue(value = "PersonId", type = Sql.Types.INT, primary = true)
     private Integer personId;
     
     @EntityValue(value = "FirstName")
@@ -31,6 +31,6 @@ public class Person {
 
 @Entity: Describes the table with an alias
 
-@EntityValue: Describes the column of the table and the type of data
+@EntityValue: Describes the column of the table, the type of data and whether it is a primary key
 
 @OneToOne: References the foreign key to another Entity
