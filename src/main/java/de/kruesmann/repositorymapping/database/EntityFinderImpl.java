@@ -35,12 +35,9 @@ public abstract class EntityFinderImpl implements EntityFinder {
     public <T> List<T> findAll(@NotNull Class<? extends T> tClass, @NotNull Condition condition) {
         validate(tClass);
         Entity entity = tClass.getAnnotation(Entity.class);
-        List<Field> annotationsByType = Stream.of(tClass.getDeclaredFields()).toList();
-        String merge = annotationsByType.stream().
-                filter(elem -> elem.isAnnotationPresent(OneToOne.class)).
-                map(elem -> getMerge(elem.getDeclaredAnnotation(OneToOne.class), elem.getType(), entity.alias())).
-                collect(Collectors.joining());
-        String selectItems = getColumnsSelect(annotationsByType, entity.alias());
+        List<Field> declaredFields = Stream.of(tClass.getDeclaredFields()).toList();
+        String merge = getMerge(entity.alias(), declaredFields);
+        String selectItems = getColumnsSelect(declaredFields, entity.alias());
         String order = String.join(", ", getOrder());
         try {
             PreparedStatement preparedStatement;
@@ -77,12 +74,9 @@ public abstract class EntityFinderImpl implements EntityFinder {
     public <T> List<T> findAll(Class<? extends T> tClass, Condition condition, Integer limit, Integer offset) {
         validate(tClass);
         Entity entity = tClass.getAnnotation(Entity.class);
-        List<Field> annotationsByType = Stream.of(tClass.getDeclaredFields()).toList();
-        String merge = annotationsByType.stream().
-                filter(elem -> elem.isAnnotationPresent(OneToOne.class)).
-                map(elem -> getMerge(elem.getDeclaredAnnotation(OneToOne.class), elem.getType(), entity.alias())).
-                collect(Collectors.joining());
-        String selectItems = getColumnsSelect(annotationsByType, entity.alias());
+        List<Field> declaredFields = Stream.of(tClass.getDeclaredFields()).toList();
+        String merge = getMerge(entity.alias(), declaredFields);
+        String selectItems = getColumnsSelect(declaredFields, entity.alias());
         String order = String.join(", ", getOrder());
         try {
             PreparedStatement preparedStatement;
@@ -124,11 +118,8 @@ public abstract class EntityFinderImpl implements EntityFinder {
     public <T> Integer count(Class<? extends T> tClass, Condition condition) {
         validate(tClass);
         Entity entity = tClass.getAnnotation(Entity.class);
-        List<Field> annotationsByType = Stream.of(tClass.getDeclaredFields()).toList();
-        String merge = annotationsByType.stream().
-                filter(elem -> elem.isAnnotationPresent(OneToOne.class)).
-                map(elem -> getMerge(elem.getDeclaredAnnotation(OneToOne.class), elem.getType(), entity.alias())).
-                collect(Collectors.joining());
+        List<Field> declaredFields = Stream.of(tClass.getDeclaredFields()).toList();
+        String merge = getMerge(entity.alias(), declaredFields);
         String order = String.join(", ", getOrder());
 
         try {
@@ -460,13 +451,15 @@ public abstract class EntityFinderImpl implements EntityFinder {
         return joiner.toString();
     }
 
-    private <T> String getMerge(OneToOne oneToOne, Class<T> aClass, String primaryAlias) {
-        if (aClass.isAnnotationPresent(Entity.class)) {
-            Entity entity = aClass.getAnnotation(Entity.class);
-            return String.format("LEFT JOIN %s as %s ON %s.%s = %s.%s", entity.table(), entity.alias(), primaryAlias, oneToOne.foreignKey(), entity.alias(), oneToOne.primaryKey());
-        }
-
-        throw new IllegalStateException("Annotation Entity not found for " + aClass.getName());
+    private String getMerge(String primaryAlias, List<Field> declaredFields) {
+        return declaredFields.stream().
+                filter(elem -> elem.isAnnotationPresent(OneToOne.class)).
+                map(elem -> {
+                    Entity entity = elem.getType().getAnnotation(Entity.class);
+                    OneToOne oneToOne = elem.getDeclaredAnnotation(OneToOne.class);
+                    return String.format("LEFT JOIN %s as %s ON %s.%s = %s.%s", entity.table(), entity.alias(), primaryAlias, oneToOne.foreignKey(), entity.alias(), oneToOne.primaryKey());
+                }).
+                collect(Collectors.joining());
     }
 
     /**
